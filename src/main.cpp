@@ -2,19 +2,20 @@
 #include <Servo.h>
 #include <SoftwareSerial.h>
 
-#include <motion_controller.hpp>
-#include <utils.hpp>
-
+// 예시: motion_controller.hpp, utils.hpp에 함수들이 선언되어 있다고 가정
+// 실제로는 아래 함수들을 구현해야 합니다.
+void start(int esc_pin, int rudder_servo_pin, int updown_motor_1, int updown_motor_2);
+void move_straight(char move);
+void turn(char dir);
+void level_updown(char level);
+int split(char *data, char delimiter, char tokens[][10]);
 
 // pin variables
-int bluetooth_rx=7;
-int bluetooth_tx=8;
-
+int bluetooth_rx = 7;
+int bluetooth_tx = 8;
 int updown_motor_1 = 12;
 int updown_motor_2 = 13;
-
 int rudder_servo_pin = 3;
-
 int esc_pin = 9;
 
 // state variables
@@ -26,46 +27,49 @@ char prev_dir = 'F';
 char prev_level = 'F';
 
 char move = 'F'; // 앞 뒤 움직임
-char dir = 'F'; // 방향
+char dir = 'F';  // 방향
 char level = 'F'; // 높이 조절
 
 SoftwareSerial BTSerial(bluetooth_rx, bluetooth_tx);
-Servo ESC;
-Servo servo;
-String val;
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
-  BTSerial.begin(9600);// set the data rate for the BT port
+  BTSerial.begin(9600); // 블루투스 포트 설정
+
+  pinMode(updown_motor_1, OUTPUT);
+  pinMode(updown_motor_2, OUTPUT);
 
   start(esc_pin, rudder_servo_pin, updown_motor_1, updown_motor_2);
-  
-  delay(2000); //ESC가 켜질때까지 약간 기다려주기!
+  delay(2000); // ESC 초기화 대기
 }
 
-char input[20]; // 입력 저장 버퍼
+char input[10];
 byte index = 0;
 
 void loop() {
-  // put your main code here, to run repeatedly:
   if (BTSerial.available()) {
-
     char cmd = BTSerial.read();
-    if (cmd == 'A') {
-      input[index] = NULL;
-      char* token;
-      int tokenCount = split(input, ',', token);
+    if (cmd == 'A') { // 명령 종료 신호
+      input[index] = '\0';
+      Serial.println(input);
 
-      move = token[0];
-      dir = token[1];
-      level = token[2];
+      char tokens[3][10];
+      int tokenCount = split(input, ',', tokens);
+
+      // 토큰이 3개 이상이면 각각 할당
+      if (tokenCount >= 3) {
+        move = tokens[0][0];
+        dir = tokens[1][0];
+        level = tokens[2][0];
+      }
 
       index = 0;
       memset(input, 0, sizeof(input));
+      memset(tokens, 0, sizeof(tokens));
     } else {
-      input[index] = cmd;
-      index ++;
+      if (index < sizeof(input) - 1) {
+        input[index++] = cmd;
+      }
     }
   }
 
@@ -73,11 +77,21 @@ void loop() {
     move_straight(move);
     prev_move = move;
   }
-
   if (prev_dir != dir) {
     turn(dir);
     prev_dir = dir;
   }
 
-  level_updown(level);
+  if (level == 'U' || level == 'u') {
+      digitalWrite(updown_motor_1, LOW);
+      digitalWrite(updown_motor_2, HIGH);
+  } else if (level == 'D' || level == 'd') {
+      Serial.println("dddddddddddddddddddd");
+      digitalWrite(updown_motor_1, HIGH);
+      digitalWrite(updown_motor_2, LOW);
+  } else if (level == 'F' || level == 'f') {
+      digitalWrite(updown_motor_1, LOW);
+      digitalWrite(updown_motor_2, LOW);
+  }
+  
 }
