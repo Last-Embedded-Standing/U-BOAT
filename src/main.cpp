@@ -2,12 +2,22 @@
 #include <Servo.h>
 #include <SoftwareSerial.h>
 
+#include <motion_controller.hpp>
+#include <utils.hpp>
+
+
+// pin variables
 int bluetooth_rx=7;
 int bluetooth_tx=8;
 
 int updown_motor_1 = 12;
 int updown_motor_2 = 13;
 
+int rudder_servo_pin = 3;
+
+int esc_pin = 9;
+
+// state variables
 int speed = 20;
 int angle = 90;
 
@@ -29,11 +39,8 @@ void setup() {
   Serial.begin(9600);
   BTSerial.begin(9600);// set the data rate for the BT port
 
-  servo.attach(3);
-  servo.write(90);
-
-  ESC.attach(9,1000,2000);
-  ESC.write(0); //0~180
+  start(esc_pin, rudder_servo_pin, updown_motor_1, updown_motor_2);
+  
   delay(2000); //ESC가 켜질때까지 약간 기다려주기!
 }
 
@@ -47,60 +54,30 @@ void loop() {
     char cmd = BTSerial.read();
     if (cmd == 'A') {
       input[index] = NULL;
-
       char* token;
-      token = strtok(input, ",");
+      int tokenCount = split(input, ',', token);
 
-      if (token != NULL) {
-        move = token[0];
-        token = strtok(NULL, ",");
-      }
-      if (token != NULL) {
-        dir = token[0];
-        token = strtok(NULL, ",");
-      }
-      if (token != NULL) {
-        level = token[0];
-      }
-
-      if (dir == 'R' || dir == 'r')
-      {
-        angle = 60;
-      } else if (dir == 'L' || dir == 'l') 
-      {
-        angle = 120;
-      } else 
-      {
-        angle = 90;
-      }
+      move = token[0];
+      dir = token[1];
+      level = token[2];
 
       index = 0;
       memset(input, 0, sizeof(input));
     } else {
-      index ++;
       input[index] = cmd;
+      index ++;
     }
   }
 
   if (prev_move != move) {
-    ESC.write(20);
-  } else {
-    ESC.write(0);
+    move_straight(move);
+    prev_move = move;
   }
 
   if (prev_dir != dir) {
-    servo.write(angle);
+    turn(dir);
+    prev_dir = dir;
   }
 
-  if (level == 'U' || level == 'u')
-  {
-    digitalWrite(updown_motor_1, LOW);
-    digitalWrite(updown_motor_2, HIGH);
-  } else if (level == 'D' || level == 'd') {
-    digitalWrite(updown_motor_1, HIGH);
-    digitalWrite(updown_motor_2, LOW);
-  } else if (level == 'F' || level == 'f') {
-    digitalWrite(updown_motor_1, LOW);
-    digitalWrite(updown_motor_2, LOW);
-  }
+  level_updown(level);
 }
