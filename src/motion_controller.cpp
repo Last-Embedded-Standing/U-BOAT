@@ -20,9 +20,9 @@ void start(int esc_pin, int rudder_servo_pin, int motor1, int motor2) {
     
 }
 
-void move_straight(char move) {
+void move_straight(char move, int speed) {
     if (move == 'T') {
-        ESC.write(20);
+        ESC.write(speed);
     } else {
         ESC.write(0);
     }

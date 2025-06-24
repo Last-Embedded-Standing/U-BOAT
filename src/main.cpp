@@ -1,11 +1,12 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include <SoftwareSerial.h>
+#include <EEPROM.h>
 
 // 예시: motion_controller.hpp, utils.hpp에 함수들이 선언되어 있다고 가정
 // 실제로는 아래 함수들을 구현해야 합니다.
 void start(int esc_pin, int rudder_servo_pin, int updown_motor_1, int updown_motor_2);
-void move_straight(char move);
+void move_straight(char move, int speed);
 void turn(char dir);
 void level_updown(char level);
 int split(char *data, char delimiter, char tokens[][10]);
@@ -13,13 +14,13 @@ int split(char *data, char delimiter, char tokens[][10]);
 // pin variables
 int bluetooth_rx = 7;
 int bluetooth_tx = 8;
-int updown_motor_1 = 12;
-int updown_motor_2 = 13;
-int rudder_servo_pin = 3;
+int updown_motor_1 = 11;
+int updown_motor_2 = 12;
+int rudder_servo_pin = 6;
 int esc_pin = 9;
 
 // state variables
-int speed = 20;
+int speed = 15;
 int angle = 90;
 
 char prev_move = 'F';
@@ -66,6 +67,10 @@ void loop() {
       index = 0;
       memset(input, 0, sizeof(input));
       memset(tokens, 0, sizeof(tokens));
+    } else if(cmd == 'S') {
+      input[index] = '\0';
+      speed = atoi(input);
+      EEPROM.update(0, speed);
     } else {
       if (index < sizeof(input) - 1) {
         input[index++] = cmd;
@@ -74,7 +79,7 @@ void loop() {
   }
 
   if (prev_move != move) {
-    move_straight(move);
+    move_straight(move, EEPROM.read(0));
     prev_move = move;
   }
   if (prev_dir != dir) {
@@ -86,7 +91,6 @@ void loop() {
       digitalWrite(updown_motor_1, LOW);
       digitalWrite(updown_motor_2, HIGH);
   } else if (level == 'D' || level == 'd') {
-      Serial.println("dddddddddddddddddddd");
       digitalWrite(updown_motor_1, HIGH);
       digitalWrite(updown_motor_2, LOW);
   } else if (level == 'F' || level == 'f') {
